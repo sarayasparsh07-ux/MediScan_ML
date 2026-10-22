@@ -1,0 +1,20 @@
+# MediScan — exact versions the dashboard and notebook were built, tested and cached with.
+# Use Python 3.13. With these exact versions the bundled .cache/ analysis loads instantly;
+# with any other versions the app still works but recomputes once (~2 minutes).
+# If an exact pin cannot be installed on your machine, use requirements-flexible.txt instead.
+streamlit==1.66.0
+pandas==3.0.5
+numpy==2.5.3
+scikit-learn==1.9.1
+scipy==1.18.1
+plotly==7.1.0
+matplotlib==3.11.2
+seaborn==0.13.2
+joblib==1.6.0
+
+# Notebook
+notebook>=7
+ipykernel>=7
+
+# Tests (optional)
+pytest>=8
