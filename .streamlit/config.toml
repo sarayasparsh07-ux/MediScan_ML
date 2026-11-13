@@ -1,13 +1,59 @@
+# MediScan theme: colours from the H&E stain on a biopsy slide.
+# Fonts are bundled in static/fonts (SIL Open Font License), so the app looks the same offline.
 [theme]
 base = "light"
-primaryColor = "#168C86"
-backgroundColor = "#F6F8FB"
-secondaryBackgroundColor = "#EAF2FA"
-textColor = "#334155"
-font = "sans serif"
+primaryColor = "#4E3D96"
+backgroundColor = "#F5F3F9"
+secondaryBackgroundColor = "#ECE7F4"
+textColor = "#3B3452"
+linkColor = "#4E3D96"
+borderColor = "#DDD6EA"
+dataframeBorderColor = "#E4DEEE"
+dataframeHeaderBackgroundColor = "#F1EDF7"
+showWidgetBorder = true
+baseRadius = "6px"
+font = "MediScan Sans, sans-serif"
+headingFont = "MediScan Display, MediScan Sans, sans-serif"
+codeFontSize = "0.82rem"
+redColor = "#D23F62"
+orangeColor = "#D49A2A"
+yellowColor = "#D49A2A"
+greenColor = "#2E8B6A"
+blueColor = "#2F6DB5"
+violetColor = "#4E3D96"
+
+[[theme.fontFaces]]
+family = "MediScan Sans"
+url = "app/static/fonts/source-sans-3-latin-wght-normal.woff2"
+weight = "200 900"
+style = "normal"
+
+[[theme.fontFaces]]
+family = "MediScan Sans"
+url = "app/static/fonts/source-sans-3-latin-wght-italic.woff2"
+weight = "200 900"
+style = "italic"
+
+[[theme.fontFaces]]
+family = "MediScan Display"
+url = "app/static/fonts/bricolage-grotesque-latin-standard-normal.woff2"
+weight = "200 800"
+style = "normal"
+
+[theme.sidebar]
+backgroundColor = "#231A3B"
+secondaryBackgroundColor = "#31274F"
+textColor = "#E4DEF2"
+borderColor = "#3B3160"
+primaryColor = "#F08AA3"
+linkColor = "#F3B6C6"
 
 [server]
 headless = true
+enableStaticServing = true
+
+[client]
+toolbarMode = "viewer"
 
 [browser]
 gatherUsageStats = false
