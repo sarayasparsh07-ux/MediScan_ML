@@ -17,9 +17,10 @@ import streamlit as st
 
 from mediscan import charts as ch
 from mediscan.config import (
-    AMBER, CORAL, FEATURE_LABELS, FEATURES, LINEAR_MODELS, MODEL_FAMILY,
-    MODEL_ORDER, MODEL_OWNER, MODEL_SPEC, NAVY, TEAL, TEAM,
+    EOSIN, FEATURE_LABELS, FEATURES, HAEM, INK, LINEAR_MODELS, MODEL_FAMILY,
+    MODEL_ORDER, MODEL_OWNER, MODEL_SPEC, TEAM,
 )
+from mediscan import ui as UI
 from mediscan.cache import load_or_run
 from mediscan.data import DataValidationError, load_and_validate, locate_csv
 from mediscan import ensembles as ENS
@@ -32,67 +33,21 @@ from mediscan.qa import run_checks
 from mediscan.recommendation import (calibration_sentence, cautious_choice, combination_sentences, evidence_sentences,
                                      pct, professor_paragraph, recommend)
 
-st.set_page_config(page_title="MediScan | Diagnostic Intelligence Lab", page_icon="🩺", layout="wide",
+st.set_page_config(page_title="MediScan | Diagnostic Intelligence Lab", page_icon="static/favicon.png", layout="wide",
                    initial_sidebar_state="expanded")
 PLOT_CFG = {"displaylogo": False, "modeBarButtonsToRemove": ["lasso2d", "select2d"], "responsive": True}
 
 # =================================================================== styling
-st.markdown(f"""
-<style>
-  .block-container {{ padding-top: 3.2rem; padding-bottom: 3rem; max-width: 1400px; }}
-  h1, h2, h3, h4 {{ color: {NAVY}; letter-spacing: -0.01em; }}
-  .ms-header {{ background: linear-gradient(120deg, {NAVY} 0%, #1D4A6E 55%, {TEAL} 130%);
-      border-radius: 14px; padding: 22px 28px; color: white; margin-bottom: 18px; }}
-  .ms-header .brand {{ font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }}
-  .ms-header .brand span {{ color: #9FE0D9; font-weight: 500; }}
-  .ms-header .sub {{ font-size: 0.98rem; opacity: 0.88; margin-top: 4px; font-style: italic; }}
-  .ms-header .pill {{ display:inline-block; margin-top:12px; margin-right:6px; padding:3px 10px; border-radius:999px;
-      background: rgba(255,255,255,0.14); font-size: 0.78rem; border: 1px solid rgba(255,255,255,0.22); }}
-  .kicker {{ color: {TEAL}; font-weight: 700; font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase;
-      margin-bottom: -6px; }}
-  .kpi-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 12px; margin: 6px 0 14px; }}
-  .kpi {{ background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 14px 16px;
-      border-top: 4px solid {TEAL}; min-height: 112px; }}
-  .kpi.coral {{ border-top-color: {CORAL}; }} .kpi.amber {{ border-top-color: {AMBER}; }} .kpi.navy {{ border-top-color: {NAVY}; }}
-  .kpi .label {{ font-size: 0.78rem; color: #64748B; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }}
-  .kpi .value {{ font-size: 1.65rem; font-weight: 700; color: {NAVY}; margin-top: 2px; line-height: 1.2; }}
-  .kpi .sub {{ font-size: 0.83rem; color: #475569; margin-top: 4px; line-height: 1.35; overflow-wrap: anywhere; }}
-  .callout {{ border-radius: 10px; padding: 12px 16px; margin: 8px 0 14px; font-size: 0.93rem; line-height: 1.5;
-      border-left: 5px solid {TEAL}; background: #DDF3EC; color: #1E3A4C; }}
-  .callout.info {{ border-left-color: #2A7DB8; background: #EAF2FA; }}
-  .callout.caution {{ border-left-color: {AMBER}; background: #FDF5E3; }}
-  .callout.warn {{ border-left-color: {CORAL}; background: #FCEDE8; }}
-  .callout b {{ color: {NAVY}; }}
-  .card {{ background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px 18px; height: 100%; }}
-  .card h4 {{ margin: 0 0 6px 0; font-size: 1.02rem; }}
-  .card p, .card li {{ font-size: 0.9rem; line-height: 1.5; color: #334155; }}
-  .badge {{ display:inline-block; padding: 2px 9px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }}
-  .b-pass {{ background:#DDF3EC; color:#0E6E69; }} .b-warn {{ background:#FDF0D5; color:#8A5A00; }}
-  .b-fail {{ background:#FCE3DC; color:#A93C22; }}
-  .cmsum {{ display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }}
-  .cmsum > div {{ background: white; border: 1px solid #E2E8F0; border-radius: 10px; padding: 10px 12px; }}
-  .cmsum .fn {{ border: 2px solid {CORAL}; background: #FCEDE8; }}
-  .cmsum .fp {{ border: 2px dashed {AMBER}; }}
-  .cmsum .t {{ font-size: 0.74rem; color:#64748B; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }}
-  .cmsum .v {{ font-size: 1.4rem; font-weight: 700; color: {NAVY}; }}
-  .rec-card {{ background: linear-gradient(135deg, #FFFFFF 0%, #EAF2FA 100%); border: 2px solid {TEAL};
-      border-radius: 14px; padding: 18px 22px; }}
-  .rec-card .name {{ font-size: 1.6rem; font-weight: 700; color: {NAVY}; }}
-  .para {{ background: white; border: 1px solid #CBD5E1; border-radius: 10px; padding: 16px 20px;
-      font-family: Georgia, 'Times New Roman', serif; font-size: 1.0rem; line-height: 1.65; color: #1E293B; }}
-  section[data-testid="stSidebar"] {{ background: {NAVY}; }}
-  section[data-testid="stSidebar"] * {{ color: #E6EEF6 !important; }}
-  section[data-testid="stSidebar"] .stRadio label p {{ font-size: 0.96rem; }}
-  section[data-testid="stSidebar"] code {{ background: rgba(255,255,255,0.12) !important; color: #9FE0D9 !important; }}
-  div[data-testid="stExpander"] details {{ background: white; border-radius: 10px; }}
-  .stTabs [data-baseweb="tab"] {{ font-weight: 600; }}
-  @media (max-width: 760px) {{ .ms-header .brand {{ font-size: 1.3rem; }} .kpi .value {{ font-size: 1.35rem; }} }}
-</style>
-""", unsafe_allow_html=True)
+st.markdown(UI.CSS, unsafe_allow_html=True)
+
+
+def bold(text: str) -> str:
+    """Markdown **bold** -> <b> for text placed inside raw HTML blocks."""
+    return re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", text)
 
 
 def callout(text: str, tone: str = "") -> None:
-    text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", text)  # allow markdown bold inside HTML callouts
+    text = bold(text)
     st.markdown(f"<div class='callout {tone}'>{text}</div>", unsafe_allow_html=True)
 
 
@@ -104,11 +59,13 @@ def kpis(items: list[tuple[str, str, str, str]]) -> None:
     st.markdown(f"<div class='kpi-grid'>{html}</div>", unsafe_allow_html=True)
 
 
-def section(title: str, kicker: str, intro: str | None = None) -> None:
-    st.markdown(f"<div class='kicker'>{kicker}</div>", unsafe_allow_html=True)
-    st.markdown(f"## {title}")
+def section(title: str, deck: str, intro: str | None = None) -> None:
+    """Page header: display title, a one-line deck, and an optional lede."""
+    lede = ""
     if intro:
-        st.markdown(intro)
+        lede = f"<div class='lede'>{bold(intro)}</div>"
+    st.markdown(f"<header class='ms-page'><h1>{title}</h1><div class='deck'>{deck}</div>{lede}</header>",
+                unsafe_allow_html=True)
 
 
 _CHART_IDS = itertools.count()  # recreated on every rerun -> stable, unique keys in render order
@@ -154,44 +111,32 @@ N_BEN_TEST = N_TEST - N_MAL_TEST
 SC = A.scaling["scaled"].metrics
 UN = A.scaling["unscaled"].metrics if A.scaling["unscaled"].ok else None
 
-# =================================================================== header + navigation
-st.markdown(f"""
-<div class='ms-header'>
-  <div class='brand'>MediScan <span>| Diagnostic Intelligence Lab</span></div>
-  <div class='sub'>Comparative machine learning evaluation for benign and malignant tumour classification.</div>
-  <span class='pill'>🧪 {len(DF)} patients · 8 measurements</span>
-  <span class='pill'>⚖️ 6 classifiers · one shared test set (n = {N_TEST})</span>
-  <span class='pill'>🎯 Positive class = Malignant</span>
-  <span class='pill'>👥 {' · '.join(TEAM)}</span>
-  <span class='pill'>🎓 Educational exercise — not clinically validated</span>
-</div>
-""", unsafe_allow_html=True)
-
+# =================================================================== navigation
 PAGES = [
     "Start Here", "Dataset & EDA", "Model Leaderboard", "Confusion Matrix Lab",
     "PCA & Decision Boundaries", "Scaling & Feature Insights", "Significance & Thresholds",
     "Model Combinations", "Clinical Recommendation", "Methodology",
 ]
-ICONS = ["🚀", "🔬", "🏆", "🧮", "🌀", "📏", "📊", "🧩", "🩺", "📘"]
+_CENTRE = A.two_feat["centre"]
 with st.sidebar:
-    st.markdown("### 🩺 MediScan")
-    st.caption("Diagnostic Intelligence Lab")
-    page = st.radio("Navigate", PAGES, format_func=lambda p: f"{ICONS[PAGES.index(p)]}  {p}",
-                    label_visibility="collapsed")
-    st.markdown("---")
-    st.markdown(
-        f"**Protocol**  \n"
-        f"Split: 75/25 stratified, `random_state=1`  \n"
-        f"Train {len(S.y_train)} · Test {N_TEST} ({N_MAL_TEST} malignant)  \n"
-        f"Scaling: StandardScaler fit on train only  \n"
-        f"Positive class: 1 = Malignant"
-    )
-    st.markdown("---")
-    st.markdown("**Team**  \n" + "  \n".join(f"{who} — {', '.join(ENS.SHORT[m] for m in models)}"
-                                             for who, models in TEAM.items()))
-    st.markdown("---")
-    st.caption(f"Data file: `{Path(REPORT.path).name}` · validation "
-               f"{'✅ all checks passed' if REPORT.n_fail == 0 and REPORT.n_warn == 0 else f'⚠️ {REPORT.n_warn} warning(s)'}")
+    emblem = UI.field_svg(DF["cell_size"], DF["cell_shape"], DF["diagnosis"], (_CENTRE.iloc[0], _CENTRE.iloc[1]),
+                          size=96, animate=False, max_points=260, title="MediScan")
+    st.markdown(f"<div class='ms-brand'>{emblem}<div><div class='w'>MediScan</div>"
+                "<div class='s'>Diagnostic Intelligence Lab</div></div></div>", unsafe_allow_html=True)
+    page = st.radio("Navigate", PAGES, label_visibility="collapsed")
+    st.markdown(f"""<div class='ms-group'>Protocol</div>
+<dl><dt>Patients</dt><dd>{len(DF)}, 8 measurements</dd>
+<dt>Split</dt><dd>75 / 25 stratified, seed 1</dd>
+<dt>Train</dt><dd>{len(S.y_train)} patients</dd>
+<dt>Test</dt><dd>{N_TEST} ({N_MAL_TEST} malignant)</dd>
+<dt>Scaling</dt><dd>fitted on training rows</dd>
+<dt>Positive</dt><dd>1 = malignant</dd></dl>
+<div class='ms-group'>Team</div>
+<dl>{''.join(f"<dt>{who}</dt><dd>{', '.join(ENS.SHORT[m] for m in models)}</dd>" for who, models in TEAM.items())}</dl>
+<div class='ms-note'>Data file <code>{Path(REPORT.path).name}</code>:
+{'all start-up checks passed' if REPORT.n_fail == 0 and REPORT.n_warn == 0 else f'{REPORT.n_warn} validation warning(s)'}.
+Educational exercise on a constructed dataset; no model here is clinically validated.</div>""",
+                unsafe_allow_html=True)
 
 if len(FAILED):
     for _, r in FAILED.iterrows():
@@ -287,55 +232,78 @@ def takeaway(text: str, tone: str = "") -> None:
 
 def details(label: str = "How this works"):
     """Method detail lives in a collapsed expander, so pages stay short."""
-    return st.expander(f"ℹ️ {label}", expanded=False)
+    return st.expander(label, expanded=False)
+
+
+def say(points: list[str], pages: str) -> None:
+    """Speaker notes for the presentation route: three short points and where the full analysis lives."""
+    items = "".join(f"<li>{bold(p)}</li>" for p in points)
+    st.markdown(f"<div class='ms-say'><h4>What to say</h4><ul>{items}</ul>"
+                f"<div class='ms-next'>Full analysis: {pages}</div></div>", unsafe_allow_html=True)
 
 
 def owner(m: str) -> str:
     return MODEL_OWNER.get(m, "")
 
 
-def rec_card(kicker: str, name: str, body: str, accent: str = TEAL) -> None:
-    st.markdown(f"<div class='rec-card' style='border-color:{accent}'><div class='kicker'>{kicker}</div>"
+def rec_card(kicker: str, name: str, body: str, accent: str = HAEM) -> None:
+    st.markdown(f"<div class='rec-card' style='border-left-color:{accent}'><div class='kicker'>{kicker}</div>"
                 f"<div class='name'>{name}</div>{body}</div>", unsafe_allow_html=True)
 
 
 # =================================================================== PAGE 1 — start here
 def page_start():
-    section("Start Here", "The project in five steps",
-            "Which model should MediScan trust to flag malignant tumours, when **a missed cancer is far worse "
-            "than a false alarm**?")
     rec0, Ew, Erf, E = recommend(LB, A.cv), A.ens["winner"], A.ens["rf"], A.ens
     r0 = OK.loc[rec0.recommended]
     w_owners = ", ".join(f"{ENS.SHORT[m]} ({owner(m)})" for m in Ew["members"])
-    c1, c2 = st.columns(2, gap="medium")
-    with c1:
-        rec_card("Best of the six required models", rec0.recommended,
-                 f"<p style='margin:6px 0 0'>Test set: caught <b>{int(r0['TP'])}/{N_MAL_TEST}</b> cancers · "
-                 f"<b>{int(r0['FN'])}</b> missed · <b>{int(r0['FP'])}</b> false alarms · accuracy {pct(r0['accuracy'])}"
-                 f"<br>Built by {owner(rec0.recommended)} · default threshold 0.5</p>")
-    with c2:
-        rec_card("Recommended configuration (extension)", f"{Ew['Candidate']} @ {Ew['Threshold']:.2f}",
-                 f"<p style='margin:6px 0 0'>Soft vote of {w_owners} · fresh CV "
-                 f"<b>{Ew['Fresh missed (mean)']:.1f}</b> missed · <b>{Ew['Fresh false alarms (mean)']:.1f}</b> false "
-                 f"alarms per 600 (Random Forest @ {Erf['Threshold']:.2f}: {Erf['Fresh missed (mean)']:.1f} · "
-                 f"{Erf['Fresh false alarms (mean)']:.1f})<br>Test set: <b>{int(Ew['Test missed'])}/{N_MAL_TEST}</b> "
-                 f"missed · <b>{int(Ew['Test false alarms'])}</b> false alarms</p>", CORAL)
-
     lin = [m for m in MODEL_ORDER if m in LINEAR_MODELS and m in OK.index]
     cur = [m for m in MODEL_ORDER if m not in LINEAR_MODELS and m in OK.index]
     lin_fn, cur_fn = OK.loc[lin, "FN"].astype(int), OK.loc[cur, "FN"].astype(int)
-    st.markdown("")
+    lin_txt = f"{lin_fn.min()}" if lin_fn.min() == lin_fn.max() else f"{lin_fn.min()}–{lin_fn.max()}"
+    two = A.two_feat
+    r_star, _ = UI.best_radius(two["radius_train"], S.y_train)
+    r_test_acc = float(((np.asarray(two["radius_test"]) > r_star) == (S.y_test.to_numpy() == 1)).mean())
+
+    c1, c2 = st.columns([1.25, 1], gap="large", vertical_alignment="center")
+    with c1:
+        st.markdown(f"""<div class='ms-hero'>
+<h1>Malignant cells ring the benign ones.<span class='soft'>A straight line can’t draw a ring.</span></h1>
+<p class='lede'>Six classifiers, one shared test set of {N_TEST} biopsies. The two straight-line models each missed
+<b>{lin_txt} of {N_MAL_TEST} cancers</b>; every model that can bend its boundary missed {cur_fn.min()} to {cur_fn.max()}.
+Which should MediScan trust when a missed cancer is far worse than a false alarm?</p></div>""",
+                    unsafe_allow_html=True)
+        rec_card("Best of the six required models", rec0.recommended,
+                 f"<p style='margin:6px 0 0'>Caught <b>{int(r0['TP'])} of {N_MAL_TEST}</b> cancers on the test set, "
+                 f"<b>{int(r0['FN'])}</b> missed, <b>{int(r0['FP'])}</b> false alarms, accuracy {pct(r0['accuracy'])}. "
+                 f"Built by {owner(rec0.recommended)}; default threshold 0.5.</p>")
+        rec_card("Recommended configuration (extension)", f"{Ew['Candidate']} @ {Ew['Threshold']:.2f}",
+                 f"<p style='margin:6px 0 0'>Soft vote of {w_owners}. On fresh cross-validation: "
+                 f"<b>{Ew['Fresh missed (mean)']:.1f}</b> missed and <b>{Ew['Fresh false alarms (mean)']:.1f}</b> false "
+                 f"alarms per 600 patients, against {Erf['Fresh missed (mean)']:.1f} and "
+                 f"{Erf['Fresh false alarms (mean)']:.1f} for Random Forest @ {Erf['Threshold']:.2f}. Test set: "
+                 f"<b>{int(Ew['Test missed'])} of {N_MAL_TEST}</b> missed, <b>{int(Ew['Test false alarms'])}</b> false alarms.</p>",
+                 EOSIN)
+    with c2:
+        svg = UI.field_svg(DF["cell_size"], DF["cell_shape"], DF["diagnosis"], (_CENTRE.iloc[0], _CENTRE.iloc[1]),
+                           radius=r_star, size=440, title="All patients plotted by cell size and cell shape")
+        st.markdown(f"""<figure class='ms-figure'>{svg}
+<div class='ms-key'><span><i class='kb'></i>Benign</span><span><i class='km'></i>Malignant</span>
+<span><i class='kr'></i>One radius</span></div>
+<figcaption>All {len(DF)} biopsies, cell size across, cell shape up, centred on the benign cluster. A single radius
+chosen on the training patients classifies {r_test_acc:.0%} of the test patients correctly; no straight line comes close.</figcaption>
+</figure>""", unsafe_allow_html=True)
+
     kpis([
-        ("Patients", f"{len(DF)}", f"{len(S.y_train)} train · {N_TEST} test ({N_MAL_TEST} malignant)", "navy"),
-        ("Straight-line models", f"{lin_fn.min()}{'' if lin_fn.min() == lin_fn.max() else '–' + str(lin_fn.max())} missed",
-         f"each, of {N_MAL_TEST} cancers", "coral"),
+        ("Patients", f"{len(DF)}", f"{len(S.y_train)} train, {N_TEST} test ({N_MAL_TEST} malignant)", "navy"),
+        ("Straight-line models", f"{lin_txt} missed", f"each, of {N_MAL_TEST} cancers", "coral"),
         ("Curved models", f"{cur_fn.min()}–{cur_fn.max()} missed", f"of {N_MAL_TEST} cancers", ""),
-        ("RBF-SVM scaling", f"{UN['accuracy'] * 100:.1f} → {pct(SC['accuracy'])}" if UN else "n/a", "accuracy, unscaled → scaled", "amber"),
+        ("RBF-SVM scaling", f"{UN['accuracy'] * 100:.1f} → {pct(SC['accuracy'])}" if UN else "n/a",
+         "accuracy, unscaled to scaled", "amber"),
         ("Combinations tested", f"{len(E['candidates'])}", f"{len(E['stage2'])} re-checked on fresh CV folds", "navy"),
     ])
 
     st.markdown("### Presentation route")
-    st.caption("Five charts that tell the whole story, in order. Each step links to the page with the full analysis.")
+    st.caption("Five charts that tell the whole story, in speaking order. Each step names the page with the full analysis.")
     t1, t2, t3, t4, t5 = st.tabs(["① The ring", "② Line vs curve", "③ Scaling", "④ Combinations", "⑤ Recommendation"])
     with t1:
         c1, c2 = st.columns([1.45, 1], gap="large")
@@ -343,13 +311,11 @@ def page_start():
             plot(ch.ring_scatter(S.X_train, S.y_train, S.X_test, S.y_test, A.two_feat["centre"]))
         with c2:
             r_size, r_shape = DF["cell_size"].corr(DF["diagnosis"]), DF["cell_shape"].corr(DF["diagnosis"])
-            st.markdown(f"""
-**What to say**
-- Malignant patients **surround** the benign cluster: same centre, much wider spread.
-- Correlation calls these two features useless (r = {r_size:+.2f} and {r_shape:+.2f}): it only sees straight-line links.
-- Yet they are the strongest predictors, because malignancy depends on **distance from the centre**.
-""")
-            st.caption("Full analysis → PCA & Decision Boundaries · Dataset & EDA")
+            say(["Malignant patients **surround** the benign cluster: same centre, much wider spread.",
+                 f"Correlation calls these two features useless (r = {r_size:+.2f} and {r_shape:+.2f}): it only sees "
+                 "straight-line links.",
+                 "Yet they are the strongest predictors, because malignancy depends on **distance from the centre**."],
+                "PCA & Decision Boundaries; Dataset & EDA")
     with t2:
         c1, c2 = st.columns(2, gap="large")
         with c1:
@@ -368,13 +334,11 @@ def page_start():
             plot(ch.scaling_compare(SC, UN))
         with c2:
             ds = A.scaling["distance_share_raw"]
-            st.markdown(f"""
-**What to say**
-- Same model, same split; only the scaling changes.
-- Unscaled, Marker Level supplies **{ds['marker_level']:.0%}** of every patient-to-patient distance, so the kernel cannot see the ring.
-- Missed cancers: **{UN['FN']} → {SC['FN']}**. No other model changes when scaled.
-""")
-            st.caption("Full analysis → Scaling & Feature Insights")
+            say(["Same model, same split; only the scaling changes.",
+                 f"Unscaled, Marker Level supplies **{ds['marker_level']:.0%}** of every patient-to-patient distance, so "
+                 "the kernel cannot see the ring.",
+                 f"Missed cancers: **{UN['FN']} → {SC['FN']}**. No other model changes when scaled."],
+                "Scaling & Feature Insights")
     with t4:
         plot(ch.fresh_fold_chart(E["stage2"], Ew["Candidate"]))
         tt = E["ttest_vs_rf"]
@@ -388,14 +352,15 @@ def page_start():
             plot(ch.error_bars(LB))
         with c2:
             Ec = cautious_choice(E)
-            st.markdown(f"""
-**What to say**
-- **Six required models → {rec0.recommended}.** Fewest missed cancers within one patient of the best, best cross-validated recall, fewest false alarms among those.
-- **Going further → {Ew['Candidate']} @ {Ew['Threshold']:.2f}.** Same cancer-catching rate, fewer false alarms.
-- **Fallback:** Random Forest @ {Erf['Threshold']:.2f}, statistically comparable and simpler.
-""" + (f"- **Most cautious:** {Ec['Candidate']} @ {Ec['Threshold']:.2f} ({Ec['Fresh missed (mean)']:.1f} missed per 600).\n"
-       if Ec is not None else ""))
-            st.caption("Full analysis → Clinical Recommendation · Model Combinations · Significance & Thresholds")
+            pts = [f"**Six required models: {rec0.recommended}.** Fewest missed cancers within one patient of the best, "
+                   "best cross-validated recall, fewest false alarms among those.",
+                   f"**Going further: {Ew['Candidate']} @ {Ew['Threshold']:.2f}.** Same cancer-catching rate, fewer "
+                   "false alarms.",
+                   f"**Fallback:** Random Forest @ {Erf['Threshold']:.2f}, statistically comparable and simpler."]
+            if Ec is not None:
+                pts.append(f"**Most cautious:** {Ec['Candidate']} @ {Ec['Threshold']:.2f} "
+                           f"({Ec['Fresh missed (mean)']:.1f} missed per 600).")
+            say(pts, "Clinical Recommendation; Model Combinations; Significance & Thresholds")
 
     st.markdown("### The six models at a glance")
     t = OK.reindex(MODEL_ORDER)[["accuracy", "recall", "precision", "FN", "FP"]].copy()
@@ -403,17 +368,18 @@ def page_start():
     t.insert(1, "Boundary", [MODEL_FAMILY[m] for m in t.index])
     st.dataframe(
         t.style.format({"accuracy": "{:.1%}", "recall": "{:.1%}", "precision": "{:.1%}"})
-        .background_gradient(subset=["FN"], cmap="Reds", vmin=0, vmax=max(5, OK["FN"].max())),
+        .background_gradient(subset=["FN"], cmap=UI.CMAP_EOSIN, vmin=0, vmax=max(5, OK["FN"].max())),
         width="stretch",
         column_config={"accuracy": "Accuracy", "recall": "Recall (M)", "precision": "Precision (M)",
                        "FN": "⚠ Missed (FN)", "FP": "False alarms (FP)"})
-    st.caption(f"Held-out test set, n = {N_TEST}. 🎓 Educational exercise on a constructed dataset: no model here is "
+    st.caption(f"Held-out test set, n = {N_TEST}. Educational exercise on a constructed dataset: no model here is "
                "clinically validated.")
 
 
 # =================================================================== PAGE 2 — EDA
 def page_eda():
-    section("Dataset & EDA", "Know the data", "The cleaned CSV is re-validated on every start-up.")
+    section("Dataset & EDA", "What the 800 biopsies look like before any model sees them.",
+            "The cleaned CSV is re-validated on every start-up; nothing is silently altered.")
     counts = DF["diagnosis"].value_counts()
     kpis([
         ("Total patients", f"{len(DF)}", f"{DF.shape[1]} columns", "navy"),
@@ -423,7 +389,7 @@ def page_eda():
         ("Missing values", f"{int(DF.isna().sum().sum())}", "after EDA-team imputation", ""),
         ("Duplicate rows", f"{int(DF.duplicated().sum())}", f"{int(DF['patient_id'].duplicated().sum())} repeated IDs", ""),
     ])
-    with st.expander(f"🔎 Start-up validation report — {len(REPORT.checks)} checks "
+    with st.expander(f"Start-up validation report — {len(REPORT.checks)} checks "
                      f"({sum(c.status == 'pass' for c in REPORT.checks)} passed, {REPORT.n_warn} warnings, {REPORT.n_fail} failed)"):
         rep = REPORT.as_frame()
         rep["Status"] = rep["Status"].map({"pass": "✅ pass", "warn": "⚠️ warn", "fail": "❌ fail"})
@@ -438,7 +404,9 @@ def page_eda():
         d = DF[FEATURES].describe().T[["mean", "std", "min", "50%", "max"]]
         d.index = [FEATURE_LABELS[f] for f in d.index]
         st.dataframe(d.style.format("{:.2f}"), width="stretch", column_config={"50%": "median"})
-        st.caption("Classes are close to balanced (54 / 46), so accuracy is a fair start, but malignant recall matters most.")
+        share = counts.get(0, 0) / len(DF)
+        st.caption(f"Classes are close to balanced ({share:.0%} / {1 - share:.0%}), so accuracy is a fair start, but "
+                   "malignant recall matters most.")
 
     st.markdown("### Feature distributions")
     cc1, cc2, _ = st.columns([1, 1, 2])
@@ -475,7 +443,7 @@ def page_eda():
 
 # =================================================================== PAGE 3 — leaderboard
 def metric_explainer():
-    with st.expander("📐 Metric definitions (malignant = positive class)"):
+    with st.expander("Metric definitions (malignant = positive class)"):
         c1, c2 = st.columns(2)
         with c1:
             st.markdown("**Accuracy**: share of all predictions that are correct")
@@ -498,8 +466,8 @@ def metric_explainer():
 
 
 def page_leaderboard():
-    section("Model Leaderboard", "Head-to-head",
-            f"Same 600 training patients, same scaler, same **{N_TEST} test patients** ({N_MAL_TEST} malignant); "
+    section("Model Leaderboard", "Six classifiers scored on the same held-out patients.",
+            f"Same {len(S.y_train)} training patients, same scaler, same **{N_TEST} test patients** ({N_MAL_TEST} malignant); "
             "exact Student Guide settings.")
     metric_explainer()
     if len(FAILED):
@@ -512,8 +480,8 @@ def page_leaderboard():
     st.dataframe(
         show.style.format({c: "{:.1%}" for c in ["accuracy", "precision", "recall", "f1", "specificity",
                                                  "balanced_accuracy"]} | {"roc_auc": "{:.3f}", "pr_auc": "{:.3f}"})
-        .background_gradient(subset=["FN"], cmap="Reds", vmin=0, vmax=max(5, show["FN"].max()))
-        .background_gradient(subset=["recall"], cmap="Greens", vmin=0.6, vmax=1.0),
+        .background_gradient(subset=["FN"], cmap=UI.CMAP_EOSIN, vmin=0, vmax=max(5, show["FN"].max()))
+        .background_gradient(subset=["recall"], cmap=UI.CMAP_HAEM, vmin=0.6, vmax=1.0),
         width="stretch",
         column_config={
             "accuracy": st.column_config.Column("Accuracy", help="(TP+TN)/all"),
@@ -539,9 +507,11 @@ def page_leaderboard():
     with c2:
         st.markdown("<div style='height:1.9rem'></div>", unsafe_allow_html=True)
         best = leaders(LB, metric, higher_is_better=True)
+        lin_ok = [m for m in OK.index if m in LINEAR_MODELS]
+        gap = OK.drop(index=lin_ok)[metric].mean() - OK.loc[lin_ok, metric].mean()
         takeaway(f"<b>{ch.METRIC_NAMES[metric]}</b>, best: <b>{names(best)}</b> ({OK.loc[best[0], metric]:.1%}). "
                  "The four curved models swap places by one or two patients on every metric; the two linear models "
-                 "stay about 25 points behind.", "info")
+                 f"stay about {gap * 100:.0f} points behind.", "info")
     plot(ch.tradeoff_map(LB))
 
     st.markdown("### Separate rankings")
@@ -584,8 +554,9 @@ def page_leaderboard():
 
 # =================================================================== PAGE 4 — confusion matrices
 def page_confusion():
-    section("Confusion Matrix Lab", "Where the mistakes are",
-            "Rows = **actual**, columns = **predicted**. Coral frame = missed cancers (FN); dashed amber = false alarms (FP).")
+    section("Confusion Matrix Lab", "Where each model's mistakes fall.",
+            "Rows are the **actual** diagnosis, columns the **predicted** one. The rose frame marks missed cancers (FN); "
+            "the dashed amber frame marks false alarms (FP).")
     c1, c2 = st.columns([1, 2])
     mode = c1.radio("View", ["Counts", "Row percentages"], horizontal=True)
     mode_key = "percent" if mode.startswith("Row") else "count"
@@ -632,9 +603,9 @@ def page_confusion():
 
 # =================================================================== PAGE 5 — PCA & boundaries
 def page_pca():
-    section("PCA & Decision Boundaries", "See the shape of the problem")
+    section("PCA & Decision Boundaries", "The shape of the problem, and the shape each model can draw.")
     p = A.pca
-    st.markdown("### 1 · PCA of all eight scaled predictors")
+    st.markdown("### 1. PCA of all eight scaled predictors")
     c1, c2 = st.columns([1.5, 1], gap="large")
     with c1:
         show_test = st.toggle("Overlay held-out test patients (hollow markers)", value=True)
@@ -652,10 +623,10 @@ def page_pca():
                         "projection for visualisation**: the models still use all 8 features.")
             lo = p["loadings"].copy()
             lo.index = [FEATURE_LABELS[f] for f in lo.index]
-            st.dataframe(lo.style.format("{:+.2f}").background_gradient(cmap="RdBu_r", vmin=-0.7, vmax=0.7),
+            st.dataframe(lo.style.format("{:+.2f}").background_gradient(cmap=UI.CMAP_DIVERGING, vmin=-0.7, vmax=0.7),
                          width="stretch")
 
-    st.markdown("### 2 · The two features that hide the ring")
+    st.markdown("### 2. The two features that hide the ring")
     c1, c2 = st.columns([1.5, 1], gap="large")
     with c1:
         plot(ch.ring_scatter(S.X_train, S.y_train, S.X_test, S.y_test, A.two_feat["centre"]))
@@ -666,7 +637,7 @@ def page_pca():
                  f"<b>{rt[S.y_train == 1].median():.2f}</b>. One curved quantity separates the classes; no straight "
                  "line can, because malignant cases lie on both sides of any line.")
 
-    st.markdown("### 3 · Straight line vs curved boundary: the SVM highlight")
+    st.markdown("### 3. Straight line vs curved boundary: the SVM highlight")
     show_train = st.toggle("Show training patients (faint) as well as test patients (hollow)", value=True)
     c1, c2 = st.columns(2, gap="large")
     with c1:
@@ -681,7 +652,7 @@ def page_pca():
              f"kernel closes a loop around the benign cluster (<b>{tr:.1%}</b>). On all 8 features the gap is "
              f"{pct(OK.loc['SVM (Linear)', 'accuracy'])} vs {pct(OK.loc['SVM (RBF)', 'accuracy'])}.")
 
-    st.markdown("### 4 · Boundary explorer: all six models on the same two features")
+    st.markdown("### 4. Boundary explorer: all six models on the same two features")
     sel = st.selectbox("Model", MODEL_ORDER, index=1)
     c1, c2 = st.columns([1.5, 1], gap="large")
     with c1:
@@ -702,7 +673,7 @@ def page_pca():
 
 # =================================================================== PAGE 6 — scaling & features
 def page_scaling():
-    section("Scaling & Feature Insights", "Preprocessing and what the models rely on")
+    section("Scaling & Feature Insights", "Why one preprocessing line matters, and which measurements the models use.")
     st.markdown("### Scaling experiment: RBF-SVM with and without standardisation")
     st.caption("Same split, labels and `SVC(kernel='rbf', C=3)`. An experiment, not a seventh leaderboard entry.")
     if not UN:
@@ -806,13 +777,13 @@ def p_fmt(p: float) -> str:
 
 
 def page_significance():
-    section("Significance, Thresholds & Calibration", "Are the differences real? Can we catch more cancers?",
+    section("Significance, Thresholds & Calibration", "Are the differences real, and can a lower cut-off catch more cancers?",
             "Four checks on top of the leaderboard (which stays unchanged): two significance tests, threshold tuning "
             "and probability calibration.")
     yte = S.y_test.to_numpy()
 
     # ------------------------------------------------------------ McNemar
-    st.markdown("### 1 · McNemar's test: paired comparison on the same test patients")
+    st.markdown("### 1. McNemar's test: paired comparison on the same test patients")
     with details("How McNemar's test works"):
         st.markdown("Both models classify the **same 200 patients**, so only the patients they **disagree** on carry "
                     "information: **b** = A right & B wrong, **c** = A wrong & B right. If the models were equally good, "
@@ -856,7 +827,7 @@ def page_significance():
     with c1:
         M = SIG.pvalue_matrix(tbl, [m for m in MODEL_ORDER if m in OK.index], "p_holm" if adjust else "p")
         plot(ch.pvalue_heatmap(M, f"Pairwise McNemar p-values — {SIG.SUBSETS[subset].split(' (')[0].lower()}",
-                               ("Holm-adjusted" if adjust else "Unadjusted") + " exact p · ✱ teal = significant at 5%"))
+                               ("Holm-adjusted" if adjust else "Unadjusted") + " exact p · ✱ violet = significant at 5%"))
     with c2:
         st.markdown("**Inspect a pair**")
         opts = [m for m in MODEL_ORDER if m in OK.index]
@@ -884,7 +855,7 @@ def page_significance():
              "'Not significant' means too few disagreements to tell, not proven equal.", "caution")
 
     # ------------------------------------------------------------ corrected t-test
-    st.markdown("### 2 · Corrected resampled t-test: paired comparison across CV folds")
+    st.markdown("### 2. Corrected resampled t-test: paired comparison across CV folds")
     with details("How the corrected t-test works"):
         st.markdown(f"Every model is scored on the **same {CV_SPLITS * CV_REPEATS} cross-validation folds** of the 600 "
                     "training patients, so per-fold differences are paired. Folds share training data, which makes a "
@@ -917,7 +888,7 @@ def page_significance():
             takeaway("No pair differs significantly after correction on this metric.")
 
     # ------------------------------------------------------------ threshold tuning
-    st.markdown("### 3 · Threshold tuning: fewer missed cancers for more false alarms")
+    st.markdown("### 3. Threshold tuning: fewer missed cancers for more false alarms")
     with details("How thresholds are chosen"):
         st.markdown("A model labels a patient malignant when its probability exceeds a cut-off (default 0.5). The cut-off "
                     "is chosen **only from out-of-fold predictions on the 600 training patients** (5-fold, scaler refit "
@@ -996,7 +967,7 @@ def page_significance():
     st.caption("Arrows read default → tuned. '⚠ flags ~everyone' = training specificity below 50% at the tuned threshold.")
 
     # ------------------------------------------------------------ calibration
-    st.markdown("### 4 · Calibration: can the probabilities be read as risks?")
+    st.markdown("### 4. Calibration: can the probabilities be read as risks?")
     with details("What calibration means and how it is measured"):
         st.markdown("A model is **well calibrated** if, among patients it scores at about 0.3, about 30% really are "
                     "malignant. A model can **rank** patients perfectly (high ROC-AUC) and still be badly calibrated.  \n"
@@ -1024,7 +995,7 @@ def page_significance():
                             "Probability": src.get(n, ""), "ECE": v[part]["ece"], "Brier": v[part]["brier"]}
                            for n, v in cal.items()]).sort_values("ECE")
         st.dataframe(ct.style.format({"ECE": "{:.3f}", "Brier": "{:.3f}"})
-                     .background_gradient(subset=["ECE"], cmap="Reds", vmin=0, vmax=0.15),
+                     .background_gradient(subset=["ECE"], cmap=UI.CMAP_EOSIN, vmin=0, vmax=0.15),
                      hide_index=True, width="stretch",
                      column_config={"ECE": st.column_config.Column("ECE", help="Expected calibration error, lower = better"),
                                     "Brier": st.column_config.Column("Brier", help="Mean squared error of probabilities "
@@ -1045,7 +1016,7 @@ def page_combinations():
     E = A.ens
     w, rf, tt = E["winner"], E["rf"], E["ttest_vs_rf"]
     cand, s2 = E["candidates"], E["stage2"]
-    section("Model Combinations", "Can several models beat the best single one?",
+    section("Model Combinations", "Can several models together beat the best single one?",
             "An extension beyond the six required models. **Soft voting** averages the members' probabilities; "
             "**stacking** learns a logistic-regression meta-model. Each candidate gets its own cost-tuned threshold.")
     kpis([
@@ -1161,7 +1132,7 @@ one split but are not external validation.*""")
 
 # =================================================================== PAGE 9 — recommendation
 def page_recommendation():
-    section("Clinical Recommendation", "Decision",
+    section("Clinical Recommendation", "Which model MediScan should deploy, and why.",
             "Best-by-metric and recommended-overall are **different questions**; this page answers both from computed results.")
     rA, rB, rC = leaders(LB, "recall"), leaders(LB, "precision"), leaders(LB, "accuracy")
     fn_lead, fp_most = leaders(LB, "FN", False, 0), leaders(LB, "FP", True, 0)
@@ -1175,7 +1146,7 @@ def page_recommendation():
         ("Most false positives", f"{int(OK.loc[fp_most[0], 'FP'])}", names(fp_most), "amber"),
     ])
     if set(rA) != set(rC):
-        takeaway(f"<b>Highest recall ≠ highest accuracy.</b> {names(rA)} misses only {int(OK.loc[rA[0], 'FN'])} cancer(s) "
+        takeaway(f"<b>Highest recall ≠ highest accuracy.</b> {names(rA)} misses only {int(OK.loc[rA[0], 'FN'])} cancer{'' if int(OK.loc[rA[0], 'FN']) == 1 else 's'} "
                  f"but raises {int(OK.loc[rA[0], 'FP'])} false alarms; {names(rC)} make{'' if len(rC) > 1 else 's'} the fewest errors overall. "
                  "Accuracy alone would pick a model that misses more cancers.", "caution")
 
@@ -1275,7 +1246,7 @@ def page_recommendation():
                  + ("" if Ec is None else
                     f"<p style='margin:8px 0 0'>Most cautious: <b>{Ec['Candidate']} @ {Ec['Threshold']:.2f}</b> "
                     f"({Ec['Fresh missed (mean)']:.1f} · {Ec['Fresh false alarms (mean)']:.1f}; cost p = {Ec['p vs winner']:.2f}).</p>"),
-                 CORAL)
+                 EOSIN)
     with c2:
         st.markdown(f"""**How the two recommendations fit together**
 - The brief asks which **required classifier** to deploy → **{rec.recommended}** (default threshold, as on the leaderboard).
@@ -1303,8 +1274,8 @@ def page_recommendation():
     c1, c2 = st.columns([3, 1])
     c1.caption(f"Built only from computed numbers ({len(para.split())} words); it follows the sliders above and names "
                "every team member.")
-    c2.download_button("⬇ Download (.txt)", para, file_name="mediscan_recommendation.txt", width="stretch")
-    with st.expander("📄 Read the paragraph", expanded=False):
+    c2.download_button("Download (.txt)", para, file_name="mediscan_recommendation.txt", width="stretch")
+    with st.expander("Read the paragraph", expanded=False):
         st.markdown(f"<div class='para'>{para}</div>", unsafe_allow_html=True)
 
     st.markdown("### The questions the report must answer")
@@ -1354,7 +1325,7 @@ def model_internals(name: str) -> None:
                           "SD malignant": np.sqrt(var[1])}, index=[FEATURE_LABELS[f] for f in FEATURES])
         t["SD ratio (M/B)"] = t["SD malignant"] / t["SD benign"]
         st.markdown("**What Gaussian Naive Bayes learned (scaled features)**")
-        st.dataframe(t.style.format("{:.2f}").background_gradient(subset=["SD ratio (M/B)"], cmap="Reds"),
+        st.dataframe(t.style.format("{:.2f}").background_gradient(subset=["SD ratio (M/B)"], cmap=UI.CMAP_EOSIN),
                      width="stretch")
         callout("Same centre, very different spread for Cell Size and Cell Shape: where two Gaussians with a shared "
                 "centre but unequal variances cross, the boundary is an <b>ellipse</b> — the ring.", "info")
@@ -1372,7 +1343,7 @@ def model_internals(name: str) -> None:
         fig, ax = plt.subplots(figsize=(13, 5.2))
         plot_tree(m, max_depth=2, feature_names=[FEATURE_LABELS[f] for f in FEATURES], class_names=["Benign", "Malignant"],
                   filled=True, rounded=True, impurity=False, fontsize=9, ax=ax)
-        ax.set_title("Decision Tree — top 3 levels (thresholds on scaled values)", fontsize=12, color=NAVY)
+        ax.set_title("Decision Tree — top 3 levels (thresholds on scaled values)", fontsize=12, color=INK)
         st.pyplot(fig, clear_figure=True)
         imp = pd.Series(m.feature_importances_, index=FEATURES)
         plot(ch.signed_bars(imp, "Decision Tree — feature importance", "Share of impurity reduction",
@@ -1387,7 +1358,7 @@ def model_internals(name: str) -> None:
 
 # =================================================================== PAGE 10 — methodology
 def page_methodology():
-    section("Methodology", "How every number was produced")
+    section("Methodology", "How every number on these pages was produced.")
     st.markdown("### Pipeline")
     st.markdown(f"""
 1. **Load & validate** `{Path(REPORT.path).name}` ({len(REPORT.checks)} checks: schema, types, missing values, duplicates, labels, class counts, negatives).
@@ -1406,9 +1377,9 @@ def page_methodology():
         with tab:
             c1, c2 = st.columns([1, 1.15], gap="large")
             with c1:
-                st.markdown(f"`{MODEL_SPEC[name]}` · built by **{owner(name)}**  \n**How it works.** {s_['how']}  \n"
-                            f"**Decision boundary.** {s_['boundary']}  \n**Observed here.** {s_['observed']}  \n"
-                            f"**Strengths / limits.** {s_['strengths']} {s_['limits']}")
+                st.markdown(f"`{MODEL_SPEC[name]}`, built by **{owner(name)}**\n\n**How it works.** {s_['how']}\n\n"
+                            f"**Decision boundary.** {s_['boundary']}\n\n**Observed here.** {s_['observed']}\n\n"
+                            f"**Strengths and limits.** {s_['strengths']} {s_['limits']}")
             with c2:
                 model_internals(name)
 

@@ -86,21 +86,23 @@ MODEL_OWNER = {m: who for who, models in TEAM.items() for m in models}
 assert sorted(MODEL_OWNER) == sorted(MODEL_ORDER), "every required model needs exactly one owner"
 
 # ---------------- MediScan visual identity ----------------
-NAVY = "#16324F"
-TEAL = "#168C86"
-MINT = "#DDF3EC"
-PALE_BLUE = "#EAF2FA"
-OFF_WHITE = "#F6F8FB"
-SLATE = "#334155"
-AMBER = "#E9B44C"
-CORAL = "#E76F51"
-GRID = "#E2E8F0"
-MUTED = "#64748B"
+# Palette taken from the H&E stain used on biopsy slides: haematoxylin (deep violet, nuclei)
+# and eosin (rose, cytoplasm), on the pale lavender of a stained glass slide.
+INK = "#231A3B"        # haematoxylin, darkest: text, sidebar
+HAEM = "#4E3D96"       # haematoxylin violet: primary accent ("scaled", "significant", selected)
+EOSIN = "#D23F62"      # eosin rose: malignant, missed cancers, warnings
+GLASS = "#F5F3F9"      # slide glass: page background
+WASH = "#ECE7F4"       # stain wash: secondary surfaces
+SLATE = "#3B3452"      # body text
+AMBER = "#D49A2A"      # false alarms, cautions
+GRID = "#E8E3F0"
+MUTED = "#6E6787"
+OK_GREEN = "#2E8B6A"
 
-# Class colours — teal/navy family for benign, coral for malignant.
-# Colour is never the only cue: markers and labels also differ.
-BENIGN_COLOR = "#2A7DB8"
-MALIGNANT_COLOR = CORAL
+# Class colours: haematoxylin blue for benign, eosin rose for malignant.
+# Colour is never the only cue: markers (circle / diamond) and labels also differ.
+BENIGN_COLOR = "#2F6DB5"
+MALIGNANT_COLOR = EOSIN
 CLASS_COLORS = {"Benign": BENIGN_COLOR, "Malignant": MALIGNANT_COLOR}
 CLASS_SYMBOLS = {"Benign": "circle", "Malignant": "diamond"}
 

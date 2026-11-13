@@ -58,26 +58,37 @@ mediscan_dashboard/
 │   ├── stats.py                 # McNemar exact test, corrected resampled t-test, single-model thresholds
 │   ├── recommendation.py        # transparent decision rules + professor-ready paragraph
 │   ├── charts.py                # Plotly figures in the MediScan visual identity
+│   ├── ui.py                    # stylesheet, the microscope-field graphic, table colour maps
 │   ├── cache.py                 # fingerprinted disk cache (python -m mediscan.cache to warm it)
 │   └── qa.py                    # 33 live QA checks (shown in-app AND enforced by tests)
 ├── tests/                       # test_pipeline.py, test_app.py, screenshot_pages.py
-├── .streamlit/config.toml       # theme
+├── static/                      # bundled fonts (SIL Open Font License) + favicon, served by Streamlit
+├── .streamlit/config.toml       # theme, fonts, static serving
 ├── .cache/                      # precomputed analysis (auto-rebuilt if anything differs)
 ├── requirements.txt             # exact pins (instant start)
 └── requirements-flexible.txt    # version ranges (one-time recompute)
 ```
 
-## 3. Dashboard pages
+## 3. Dashboard pages and design
 
-**Start Here** is the presentation route: both recommendations, five headline numbers, and five tabs in speaking order
+**Start Here** is the presentation route. It opens on the finding itself: all 800 biopsies drawn inside a microscope's
+circular field, benign cells at the centre and malignant cells in a ring around them, with the single decision radius
+dashed in. Beside it sit both recommendations and five headline numbers, then five tabs in speaking order
 (① the ring → ② linear vs RBF boundary → ③ scaling → ④ combinations → ⑤ recommendation), each with a chart, three
-talking points and a pointer to the full page.
+talking points and the page that holds the full analysis.
 
 Then: Dataset & EDA · Model Leaderboard · Confusion Matrix Lab · PCA & Decision Boundaries · Scaling & Feature
 Insights · Significance & Thresholds (McNemar, corrected t-test, threshold tuning, **calibration**) · Model
 Combinations · Clinical Recommendation · Methodology (one tab per model, labelled with its builder).
 
-Every section shows its chart or table plus **one takeaway**; method explanations sit in collapsed "ℹ️" expanders.
+Every section shows its chart or table plus **one takeaway**; method explanations sit in collapsed expanders.
+
+**Visual identity.** The palette comes from the H&E stain on a biopsy slide: haematoxylin violet for text and
+accents, eosin rose for malignant cases and missed cancers, benign blue, amber for false alarms, on pale slide-glass
+lavender. Headings use Bricolage Grotesque and body text Source Sans 3; both are bundled in `static/fonts`, so the
+dashboard looks the same with no internet connection. The notebook's charts use the same colours. Colour is never
+the only cue: malignant points are diamonds, missed-cancer cells carry a frame and a ⚠ label, and every model keeps
+one colour and one dash style.
 
 ## 4. Protocol
 
@@ -141,8 +152,8 @@ Every section shows its chart or table plus **one takeaway**; method explanation
   page and control.
 - The notebook executes end to end with no errors. Its **summary check** re-derives all 18 claims in the one-screen
   summary, and its **appendix** asserts equality with the dashboard (including calibration).
-- Every page was reviewed in headless Chromium at desktop (1440 px) and phone (400 px) width, including each
-  Start Here tab, for clipped or overlapping labels.
+- Every page was reviewed in headless Chromium at desktop (1440 px) and phone (400 px) width for clipped or
+  overlapping labels.
 
 **Limitations:** one 200-patient test set (one patient ≈ 1.1 points of recall); constructed data with no external
 validation cohort; Random Forest's and the ensemble's probabilities are not calibrated risks; the cost ratio is
